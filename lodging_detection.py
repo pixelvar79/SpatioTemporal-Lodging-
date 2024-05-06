@@ -1,7 +1,5 @@
 import utils
 from utils import load_dataset
-
-from tifffile import imread, imwrite
 from skimage.transform import resize
 import numpy as np
 from sklearn.model_selection import train_test_split
@@ -12,16 +10,15 @@ from scipy.stats import gaussian_kde
 from sklearn.preprocessing import LabelEncoder
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Conv2D, MaxPooling2D, Dropout, Flatten, Dense, GlobalAveragePooling2D
-from tensorflow.keras.layers.experimental import preprocessing
 from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint
 from sklearn.metrics import accuracy_score, roc_curve, auc, roc_auc_score, f1_score, jaccard_score, precision_score, recall_score
-import seaborn as sns
 import matplotlib.pyplot as plt
-from PIL import Image
-import gc
-from time import sleep
 
-# Load x, y dataset
+import argparse
+from tensorflow.keras.layers import Conv3D, MaxPooling3D, Dropout, Flatten, Dense, GlobalAveragePooling3D
+
+
+# Load x, y dataset from local directory
 X, y = utils.load_dataset(dir_img, dir_gt, task='classification')
 
 print(X.shape, y.shape)
@@ -39,6 +36,7 @@ def data_splitting(x_var, y_var):
     x_train, x_val, y_train, y_val = train_test_split(x_train, y_train, train_size=0.8, random_state=RANDOM_STATE)
     sample_shape = x_train[0].shape
 
+#time-point 2D-CNN model classifier
 def fit_model():
     global model
     # Model configuration
@@ -64,7 +62,43 @@ def fit_model():
     model.add(GlobalAveragePooling2D())
     model.add(Dense(1, activation='sigmoid'))
     model.compile(loss='binary_crossentropy', optimizer=OPT, metrics=['accuracy'])
+    
+    
+#time-point 3D-CNN model classifier
+def fit_model1():
+    global model
+    # Model configuration
+    MODEL_NAME = f'{name}.h5'
+    SAMPLE_SHAPE = x_train[0].shape
+    EPOCHS = 50
+    SIZE = 32
+    MODE = 'max'
+    METRIC_VAR = 'val_accuracy'
+    LR = 0.01
+    DC = 0.001
+    OPT = tf.keras.optimizers.Adam(learning_rate=LR, decay=DC)
+    es = EarlyStopping(monitor=METRIC_VAR, verbose=1, mode=MODE, min_delta=0.001, patience=20)
+    mc = ModelCheckpoint(MODEL_NAME, monitor=METRIC_VAR, mode=MODE, save_best_only=True, verbose=1)
+    
+    model = Sequential()
+    model.add(Conv3D(32, (3, 3, x_train[0].shape[2]), padding='same', activation='relu', input_shape=SAMPLE_SHAPE))
+    model.add(BatchNormalization())
+    model.add(MaxPooling3D(pool_size=(2, 2, 1)))
+    model.add(Dropout(0.50))
+    model.add(Conv3D(32, (3, 3, x_train[0].shape[2]), padding='same', activation='relu'))
+    model.add(BatchNormalization())
+    model.add(MaxPooling3D(pool_size=(2, 2, 1)))
+    model.add(Conv3D(32, (3, 3, x_train[0].shape[2]), padding='same', activation='relu'))
+    model.add(BatchNormalization())
+    model.add(MaxPooling3D(pool_size=(2, 2, 2)))
+    model.add(Dropout(0.50))
+    model.add(Flatten())
+    model.add(Dense(1, activation='sigmoid'))
+    model.summary()
+    model.compile(loss='binary_crossentropy', optimizer=OPT, metrics=['accuracy'])
 
+
+#plot performance over time during training
 def model_performance():
     global saved_model
     saved_model = tf.keras.models.load_model(MODEL_NAME)
@@ -78,6 +112,7 @@ def model_performance():
     plt.legend(['Train', 'Validation'], loc='upper right')  
     plt.show()
 
+#save ground-truth and pred as csv file
 def results_df():
     global cnn_flower, pred
     pred = (model.predict(x_test) > 0.5).astype("int32")
@@ -86,6 +121,7 @@ def results_df():
     cnn_flower['pred'] = pred
     cnn_flower.to_csv(f'{name}_.csv', sep='\t')
 
+##ROC curve plots
 def roc_plot_results():
     ns_probs = [0 for _ in range(len(y_test))]
     lr_probs = saved_model.predict(x_test)
@@ -105,6 +141,7 @@ def roc_plot_results():
     plt.legend()
     plt.show()
 
+##metrics evaluation 
 def summary_metrics():
     accur = []
     roc = []
@@ -135,6 +172,7 @@ def summary_metrics():
     mdf['model'] = 'MS_TP_C'
     dfs.append(mdf)
 
+## slices for target dates in the stacked array of images
 slices = (('75', slice(35, 40)),
           ('83', slice(40, 45)),
           ('88', slice(45, 50)),
@@ -153,12 +191,26 @@ list_tpr = []
 time_list = []
 memory_list = []
 
-for i in range(1):
-    for name, dates in zip(labels, list_data):
-        data_splitting(dates, y)
-        fit_model()
-        model_performance()
-        results_df()
-        roc_plot_results()
-        summary_metrics()
 
+# Add argparse for choosing the model fit type
+parser = argparse.ArgumentParser(description='Fit model for dataset.')
+parser.add_argument('--fit-type', type=int, choices=[0, 1], default=0,
+                    help='Select the type of model fitting (0 for 2D, 1 for 3D)')
+
+args = parser.parse_args()
+
+
+for name, dates in zip(labels, list_data):
+    data_splitting(dates, y)
+    # Run the selected fitting function based on the argument value
+    if args.fit_type == 'time-point':
+        fit_model()
+    elif args.fit_type == 'temporal':
+        fit_model1()
+    else:
+        print("Invalid fit type. Please choose 0 or 1.")
+    
+    model_performance()
+    results_df()
+    roc_plot_results()
+    summary_metrics()
