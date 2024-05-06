@@ -27,31 +27,25 @@ Varela, S.; Pederson, T.; Leakey, A. (2022). *Implementing Spatio-Temporal 3D-Co
 
 2) Execute lodging detection evaluation
 ```
-
-  python lodging_detection.py --fit-type time-point (for traditional time-point CNN analysis)
+  python lodging_detection.py --fit-type time-point 
 ```
+(for traditional time-point CNN analysis)
 
   or
+  
   ```
-
-  python lodging_detection.py --fit-type temporal (for temporal integrated CNN analysis)
+  python lodging_detection.py --fit-type temporal 
 ```
+(for temporal integrated CNN analysis)
 
 3) Execute lodging severity evaluation
 ```
-
-
   python lodging_severity.py --fit-type time-point
 ```
-  
 (for traditional time-point CNN analysis)
 
   or
   ```
-
   python lodging_severity.py --fit-type temporal 
-
-  
-  
   ```
 (for temporal integrated CNN analysis)
