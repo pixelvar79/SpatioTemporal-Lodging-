@@ -199,7 +199,6 @@ parser.add_argument('--fit-type', type=int, choices=[0, 1], default=0,
 
 args = parser.parse_args()
 
-
 for name, dates in zip(labels, list_data):
     data_splitting(dates, y)
     # Run the selected fitting function based on the argument value
