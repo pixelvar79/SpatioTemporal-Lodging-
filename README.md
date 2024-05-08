@@ -22,8 +22,6 @@ Build local Conda virtual environment and dependencies
 ```
   conda create --name lodging python=3.9  
 
-  cd lodging
-
   conda activate lodging
   
   pip install -r requirements.txt
