@@ -16,9 +16,7 @@ conda --version
   During the installation, you might be prompted to add Anaconda to the system PATH. If not, and if you encounter issues, you can add it manually:
   
   On Windows, you can check "Add Anaconda to my PATH environment variable" during installation.
-  On Linux
-
-
+  On Linux you may need to add the following line to your shell profile file (e.g., .bashrc or .zshrc):
 
 Build local Conda virtual environment and dependencies
 ```
